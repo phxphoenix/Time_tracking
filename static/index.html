@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker Prototype</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="logo">TimeTracker <span>Pro</span></div>
+        <div class="timers-container">
+            <div class="timer-box total-time">
+                <span class="label">Total Time</span>
+                <span id="totalTimeDisplay" class="time">00:00:00</span>
+            </div>
+            <div class="timer-box task-time">
+                <span class="label">Task Time</span>
+                <span id="taskTimeDisplay" class="time">00:00:00</span>
+            </div>
+            <button id="mainClockBtn" class="clock-btn"><i class="fa-solid fa-play"></i></button>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <ul>
+                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks</li>
+                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable</li>
+                <li data-view="reporting"><i class="fa-solid fa-chart-pie"></i> Reporting</li>
+                <li data-view="admin"><i class="fa-solid fa-gear"></i> Admin</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content-area">
+            
+            <!-- Tasks View -->
+            <div id="view-tasks" class="view-section active">
+                <h2>Transact Tasks</h2>
+                <div id="processesList" class="processes-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Timetable View -->
+            <div id="view-timetable" class="view-section">
+                <div class="timetable-header">
+                    <h2>Timetable</h2>
+                    <div class="date-navigator">
+                        <button id="btnPrevDay" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="currentDateDisplay" class="date-display">Dzisiaj</span>
+                        <button id="btnNextDay" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <p class="subtitle">Podsumowanie czasu na procesy dla wybranego dnia</p>
+                <div id="calendarContainer" class="calendar-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Reporting View -->
+            <div id="view-reporting" class="view-section">
+                <h2>Reporting</h2>
+                <div class="report-card">
+                    <i class="fa-solid fa-file-export report-icon"></i>
+                    <h3>AllChargesReport</h3>
+                    <p>Eksportuj wszystkie zalokowane procesy i podprocesy.</p>
+                    <div class="button-row" style="display:flex; justify-content:center; gap:15px; margin-top:20px;">
+                        <button id="btnExportReportTxt" class="btn primary"><i class="fa-solid fa-file-lines"></i> Wygeneruj Retro .TXT</button>
+                        <button id="btnExportReportCsv" class="btn success" style="background-color: var(--accent-green);"><i class="fa-solid fa-file-csv"></i> Wygeneruj surowy .CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="view-admin" class="view-section">
+                <h2>Admin Panel</h2>
+                
+                <div class="admin-grid">
+                    <div class="admin-card">
+                        <h3>Dodaj Process</h3>
+                        <div class="input-group">
+                            <input type="text" id="newProcessName" placeholder="Nazwa nowego procesu...">
+                            <button id="btnAddProcess" class="btn primary">Dodaj</button>
+                        </div>
+                    </div>
+                    <div class="admin-card">
+                        <h3>Dodaj Subprocess</h3>
+                        <div class="input-group">
+                            <select id="parentProcessSelect">
+                                <option value="">Wybierz proces docelowy...</option>
+                            </select>
+                            <input type="text" id="newSubprocessName" placeholder="Nazwa subprocesu...">
+                            <button id="btnAddSubprocess" class="btn primary">Dodaj</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 style="margin-top: 40px; margin-bottom: 20px;">Edycja Zapisanych Danych</h3>
+                <div id="adminEditList" class="processes-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast templates -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

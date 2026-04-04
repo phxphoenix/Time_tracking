@@ -1,0 +1,13 @@
+# Baza danych SQLite: omijasz, by nie wrzucić swoich prywatnych wyników do internetu
+*.db
+timetracker.db
+
+# Pliki środowiska Pythona i cache
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Raporty - wygenerowane pliki aplikacji
+*.txt
+*.csv
