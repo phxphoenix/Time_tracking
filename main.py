@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-import models, schemas
+import models, schemas, auth
 from database import engine, SessionLocal
 import datetime
 import os
+import csv
+from io import StringIO
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -22,6 +25,12 @@ def get_db():
 # Initialize default data
 def init_db():
     db = SessionLocal()
+    if not db.query(models.User).filter(models.User.username == "phx").first():
+        hashed = auth.get_password_hash("0zKvUd8W@!P#MPpTWgA%")
+        default_user = models.User(username="phx", email="phx.poczta@gmail.com", hashed_password=hashed)
+        db.add(default_user)
+        db.commit()
+    
     if not db.query(models.Process).first():
         p1 = models.Process(name="Proces 1")
         db.add(p1)
@@ -35,81 +44,116 @@ def init_db():
 
 init_db()
 
-# API Endpoints
+# AUTHENTICATION
+@app.post("/api/auth/token", response_model=schemas.Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # OAuth2 specifies 'username' field, but user might send 'email' in the username field
+    user = db.query(models.User).filter((models.User.username == form_data.username) | (models.User.email == form_data.username)).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Nieprawidłowy login lub hasło", headers={"WWW-Authenticate": "Bearer"})
+    
+    access_token = auth.create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# USERS CRUD (Admin)
+@app.get("/api/users", response_model=list[schemas.User])
+def read_users(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.User).all()
+
+@app.post("/api/users", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if db.query(models.User).filter((models.User.username == user.username) | (models.User.email == user.email)).first():
+        raise HTTPException(status_code=400, detail="Użytkownik już istnieje")
+    hashed = auth.get_password_hash(user.password)
+    db_user = models.User(username=user.username, email=user.email, hashed_password=hashed)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.put("/api/users/{user_id}", response_model=schemas.User)
+def update_user(user_id: int, options: schemas.UserUpdateOptions, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if options.username: db_user.username = options.username
+    if options.email: db_user.email = options.email
+    if options.password: db_user.hashed_password = auth.get_password_hash(options.password)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.delete("/api/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted"}
+
+# API Endpoints (Secured)
 @app.get("/api/processes", response_model=list[schemas.Process])
-def read_processes(db: Session = Depends(get_db)):
-    processes = db.query(models.Process).all()
-    return processes
+def read_processes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.Process).all()
 
 @app.post("/api/processes", response_model=schemas.Process)
-def create_process(process: schemas.ProcessCreate, db: Session = Depends(get_db)):
+def create_process(process: schemas.ProcessCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_process = models.Process(name=process.name)
     db.add(db_process)
     db.commit()
     db.refresh(db_process)
     return db_process
 
+@app.put("/api/processes/{p_id}", response_model=schemas.Process)
+def update_process(p_id: int, process: schemas.ProcessBase, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_process = db.query(models.Process).filter(models.Process.id == p_id).first()
+    db_process.name = process.name
+    db.commit()
+    db.refresh(db_process)
+    return db_process
+
+@app.delete("/api/processes/{p_id}")
+def delete_process(p_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_process = db.query(models.Process).filter(models.Process.id == p_id).first()
+    db.delete(db_process)
+    db.commit()
+    return {"message": "Process deleted"}
+
 @app.post("/api/subprocesses", response_model=schemas.Subprocess)
-def create_subprocess(subprocess: schemas.SubprocessCreate, db: Session = Depends(get_db)):
+def create_subprocess(subprocess: schemas.SubprocessCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_subprocess = models.Subprocess(name=subprocess.name, process_id=subprocess.process_id)
     db.add(db_subprocess)
     db.commit()
     db.refresh(db_subprocess)
     return db_subprocess
 
-@app.patch("/api/subprocesses/{sp_id}/toggle_complete", response_model=schemas.Subprocess)
-def toggle_subprocess(sp_id: int, db: Session = Depends(get_db)):
-    db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
-    if not db_sp:
-        raise HTTPException(status_code=404, detail="Subprocess not found")
-    db_sp.completed = not db_sp.completed
-    db.commit()
-    db.refresh(db_sp)
-    return db_sp
-
-@app.put("/api/processes/{p_id}", response_model=schemas.Process)
-def update_process(p_id: int, process: schemas.ProcessBase, db: Session = Depends(get_db)):
-    db_process = db.query(models.Process).filter(models.Process.id == p_id).first()
-    if not db_process:
-        raise HTTPException(status_code=404, detail="Process not found")
-    db_process.name = process.name
-    db.commit()
-    db.refresh(db_process)
-    return db_process
-
 @app.put("/api/subprocesses/{sp_id}", response_model=schemas.Subprocess)
-def update_subprocess(sp_id: int, subprocess: schemas.SubprocessBase, db: Session = Depends(get_db)):
+def update_subprocess(sp_id: int, subprocess: schemas.SubprocessBase, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
-    if not db_sp:
-        raise HTTPException(status_code=404, detail="Subprocess not found")
     db_sp.name = subprocess.name
     db.commit()
     db.refresh(db_sp)
     return db_sp
 
-@app.delete("/api/processes/{p_id}")
-def delete_process(p_id: int, db: Session = Depends(get_db)):
-    db_process = db.query(models.Process).filter(models.Process.id == p_id).first()
-    if not db_process:
-        raise HTTPException(status_code=404, detail="Process not found")
-    db.delete(db_process)
-    db.commit()
-    return {"message": "Process deleted"}
-
 @app.delete("/api/subprocesses/{sp_id}")
-def delete_subprocess(sp_id: int, db: Session = Depends(get_db)):
+def delete_subprocess(sp_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
-    if not db_sp:
-        raise HTTPException(status_code=404, detail="Subprocess not found")
     db.delete(db_sp)
     db.commit()
     return {"message": "Subprocess deleted"}
 
-@app.post("/api/subprocesses/{sp_id}/allocate", response_model=schemas.TimeEntry)
-def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session = Depends(get_db)):
+@app.patch("/api/subprocesses/{sp_id}/toggle_complete", response_model=schemas.Subprocess)
+def toggle_subprocess(sp_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
-    if not db_sp:
-        raise HTTPException(status_code=404, detail="Subprocess not found")
+    db_sp.completed = not db_sp.completed
+    db.commit()
+    db.refresh(db_sp)
+    return db_sp
+
+@app.post("/api/subprocesses/{sp_id}/allocate", response_model=schemas.TimeEntry)
+def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
     
     stop_time = datetime.datetime.utcnow()
     start_time = stop_time - datetime.timedelta(seconds=time_entry.time_allocated_seconds)
@@ -125,8 +169,11 @@ def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session =
     db.refresh(db_entry)
     return db_entry
 
+# W autoryzacji raportów nie używamy Depend z uwagi na otwieranie przez '_blank', użyto prostego zabezpieczenia parametrem (dla Auth w SPA)
+# Choć poprawnie byłoby przesyląc go frontendem jako BLOB. Dla uproszczenia (bo to export .txt) dodajemy token w query param: ?token=XYZ
 @app.get("/api/report/allcharges")
-def generate_report(db: Session = Depends(get_db)):
+def generate_report(token: str, db: Session = Depends(get_db)):
+    auth.get_current_user(token, db) # Rzuca HTTP 401 jeśli zły
     entries = db.query(models.TimeEntry).all()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
@@ -152,9 +199,8 @@ def generate_report(db: Session = Depends(get_db)):
     return PlainTextResponse(content, media_type="text/plain", headers={"Content-Disposition": f"attachment; filename=AllChargesReport_{timestamp}.txt"})
 
 @app.get("/api/report/csv")
-def generate_csv(db: Session = Depends(get_db)):
-    import csv
-    from io import StringIO
+def generate_csv(token: str, db: Session = Depends(get_db)):
+    auth.get_current_user(token, db)
     entries = db.query(models.TimeEntry).all()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     

@@ -2,6 +2,27 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class UserBase(BaseModel):
+    username: str
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdateOptions(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+class User(UserBase):
+    id: int
+    class Config:
+        orm_mode = True
+
 class TimeEntryBase(BaseModel):
     time_allocated_seconds: int
 
