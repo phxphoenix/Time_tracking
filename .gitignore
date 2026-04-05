@@ -9,5 +9,5 @@ venv/
 .env
 
 # Raporty - wygenerowane pliki aplikacji
-*.txt
-*.csv
+AllChargesReport*.txt
+AllChargesReport*.csv
