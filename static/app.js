@@ -237,8 +237,8 @@ async function fetchProcesses() {
 
 async function fetchAdminData() {
     try {
-        // Fetch processes
-        let res = await apiFetch('/api/processes');
+        // Fetch processes (get ALL for admin mode)
+        let res = await apiFetch('/api/processes?all_data=true');
         let data = await res.json();
         
         const populateSelect = (select) => {
@@ -502,15 +502,17 @@ window.deleteUser = async (id, name) => {
 document.getElementById('btnAddProcess').addEventListener('click', async () => {
     const name = document.getElementById('newProcessName').value;
     if(!name) return;
-    await apiFetch('/api/processes', { method: 'POST', body: JSON.stringify({ name }) });
-    document.getElementById('newProcessName').value = ''; showToast("Dodano proces"); fetchAdminData();
+    const res = await apiFetch('/api/processes', { method: 'POST', body: JSON.stringify({ name }) });
+    const p = await res.json();
+    document.getElementById('newProcessName').value = ''; showToast(`Dodano proces [ID: ${p.id}]`); fetchAdminData();
 });
 document.getElementById('btnAddSubprocess').addEventListener('click', async () => {
     const parentId = parentProcessSelect.value;
     const name = document.getElementById('newSubprocessName').value;
     if(!parentId || !name) return;
-    await apiFetch('/api/subprocesses', { method: 'POST', body: JSON.stringify({ name, process_id: parseInt(parentId) }) });
-    document.getElementById('newSubprocessName').value = ''; showToast("Utworzono pusty Task z Twoim przypisaniem"); fetchAdminData();
+    const res = await apiFetch('/api/subprocesses', { method: 'POST', body: JSON.stringify({ name, process_id: parseInt(parentId) }) });
+    const sp = await res.json();
+    document.getElementById('newSubprocessName').value = ''; showToast(`Utworzono task [ID: ${sp.id}] z Twoim przypisaniem`); fetchAdminData();
 });
 
 // Quick Add Handler
@@ -522,7 +524,7 @@ btnQuickAddConfirm.addEventListener('click', async () => {
     if(!pId || !name) return showToast("Wypełnij Proces i Nazwę!");
     
     try {
-        await apiFetch('/api/subprocesses', {
+        const res = await apiFetch('/api/subprocesses', {
             method: 'POST',
             body: JSON.stringify({ 
                 name: name, 
@@ -530,7 +532,8 @@ btnQuickAddConfirm.addEventListener('click', async () => {
                 user_id: uId ? parseInt(uId) : null
             })
         });
-        showToast(`Utworzono nowy Task [ID: NOWE]`);
+        const sp = await res.json();
+        showToast(`Utworzono nowy Task [ID: ${sp.id}]`);
         quickTaskName.value = '';
         quickAddTaskCard.classList.add('hidden');
         fetchProcesses();

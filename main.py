@@ -123,12 +123,18 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
 
 # API Endpoints (Secured)
 @app.get("/api/processes", response_model=list[schemas.Process])
-def read_processes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def read_processes(all_data: bool = False, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     all_processes = db.query(models.Process).all()
+    
+    # Dla Admina (all_data=True) zwracamy wszystko bez filtrów
+    if all_data:
+        return all_processes
+
     # Filtrujemy by odsyłać na front TYLKO "Tasks" (subprocesses) w których uczestniczy obecny user
     filtered_processes = []
     for p in all_processes:
-        valid_sub = [sp for sp in p.subprocesses if current_user in sp.users]
+        # Porównujemy po ID dla 100% pewności w różnych sesjach
+        valid_sub = [sp for sp in p.subprocesses if any(u.id == current_user.id for u in sp.users)]
         if valid_sub or not p.subprocesses:
             # Tworzymy kopię w locie by nie niszczyć obiektu w DB, ale do zwrotki schema wystarczy zmodyfikować klon
             p_copy = models.Process(id=p.id, name=p.name)
