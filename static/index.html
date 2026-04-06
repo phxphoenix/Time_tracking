@@ -34,6 +34,7 @@
                 <span class="label">Task Time</span>
                 <span id="taskTimeDisplay" class="time">00:00:00</span>
             </div>
+            <button id="mobileMenuBtn" class="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
             <button id="mainClockBtn" class="clock-btn"><i class="fa-solid fa-play"></i></button>
         </div>
     </header>
@@ -42,8 +43,8 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <ul>
-                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks (Zespołowe)</li>
-                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable (Bieżący User)</li>
+                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks</li>
+                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable</li>
                 <li data-view="reporting"><i class="fa-solid fa-chart-pie"></i> Reporting</li>
                 <li data-view="admin"><i class="fa-solid fa-gear"></i> Admin</li>
                 <li id="btnLogout" style="margin-top:auto; color:var(--accent-red);"><i class="fa-solid fa-arrow-right-from-bracket"></i> Wyloguj</li>
@@ -163,6 +164,9 @@
             <div class="app-version">TimeTracker Pro | wersja aplikacji <span class="badge">v1.1.0 (Faza 4)</span></div>
         </footer>
     </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
     <!-- Toast templates -->
     <div id="toastContainer" class="toast-container"></div>

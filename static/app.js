@@ -25,6 +25,9 @@ const footerUserLabel = document.getElementById('footerUserLabel');
 const assignOverlay = document.getElementById('assignOverlay');
 const assignUserSelect = document.getElementById('assignUserSelect');
 const assignTaskLabel = document.getElementById('assignTaskLabel');
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const sidebar = document.querySelector('.sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
 
 // Quick Add Elements
 const quickAddTaskCard = document.getElementById('quickAddTaskCard');
@@ -162,8 +165,29 @@ document.querySelectorAll('.sidebar li[data-view]').forEach(item => {
         if(viewName === 'tasks') fetchProcesses();
         if(viewName === 'admin') fetchAdminData();
         if(viewName === 'timetable') renderTimetable();
+
+        // Close sidebar on mobile after selecting a view
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        }
     });
 });
+
+// Mobile Sidebar Toggles
+if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('active');
+    });
+}
+
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+    });
+}
 
 function showToast(msg) {
     const toast = document.createElement('div');

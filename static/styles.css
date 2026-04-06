@@ -583,3 +583,180 @@ select option {
     color: var(--accent-blue);
     font-weight: 500;
 }
+
+/* --- MOBILE RESPONSIVE STYLES --- */
+
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    z-index: 1001;
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        height: auto;
+        overflow: auto;
+    }
+
+    .mobile-menu-btn {
+        display: block;
+    }
+
+    .topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 0 15px;
+        height: 60px;
+        z-index: 500;
+    }
+
+    .topbar .logo {
+        font-size: 18px;
+    }
+
+    .timers-container {
+        gap: 10px;
+    }
+
+    .timer-box .time {
+        font-size: 16px;
+    }
+
+    .timer-box .label {
+        font-size: 9px;
+    }
+
+    .clock-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+
+    /* Sidebar drawer */
+    .sidebar {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        bottom: 0;
+        width: 250px;
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(20px);
+        padding-top: 70px;
+    }
+
+    .sidebar.open {
+        transform: translateX(260px);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+
+    .main-layout {
+        display: block;
+        overflow: visible;
+    }
+
+    .content-area {
+        padding: 20px;
+        padding-top: 25px;
+        margin-top: 60px; /* Height of fixed topbar */
+        width: 100%;
+        overflow-x: hidden;
+        overflow-y: visible;
+        padding-bottom: 100px;
+    }
+
+    .app-footer {
+        left: 0;
+        flex-direction: column;
+        height: auto;
+        padding: 15px 20px;
+        gap: 10px;
+        text-align: center;
+        background: rgba(15, 23, 42, 1);
+    }
+
+    /* Component adjustments */
+    h2 {
+        font-size: 22px;
+    }
+
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .input-group {
+        flex-direction: column;
+    }
+
+    .input-group input, 
+    .input-group select, 
+    .input-group button {
+        width: 100% !important;
+        flex: none;
+    }
+
+    .process-header {
+        font-size: 16px;
+        padding: 15px;
+    }
+
+    .sp-row-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .sp-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .tt-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .tt-label {
+        width: 100%;
+    }
+
+    /* Modals */
+    .login-box {
+        width: 90%;
+        padding: 25px;
+    }
+
+    /* Sidebar overlay backdrop when open */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .timers-container .total-time {
+        display: none; /* Hide total time on very small screens to fit task time & clock */
+    }
+    
+    .logo {
+        display: none; /* Only Show Icon if you had one, for now hide logo words to fit items */
+    }
+}
