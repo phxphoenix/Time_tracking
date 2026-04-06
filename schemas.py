@@ -47,6 +47,7 @@ class SubprocessBase(BaseModel):
 
 class SubprocessCreate(SubprocessBase):
     process_id: int
+    user_id: Optional[int] = None
 
 class Subprocess(SubprocessBase):
     id: int

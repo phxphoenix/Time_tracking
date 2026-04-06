@@ -34,9 +34,7 @@ def init_db():
         # Próba dodania kolumny user_id do time_entries
         db.execute(text("ALTER TABLE time_entries ADD COLUMN user_id INTEGER REFERENCES users(id)"))
         db.commit()
-        print("Migracja: Dodano kolumnę user_id do tabeli time_entries.")
     except Exception:
-        # Jeśli kolumna już istnieje, silnik rzuci błąd - ignorujemy go
         db.rollback()
 
     # Tworzenie brakujących tabel (task_users)
@@ -50,14 +48,14 @@ def init_db():
         db.commit()
         db.refresh(phx_user)
     
-    # Przebieg przez istniejące wpisy - przypisanie do phx
+    # Przebieg przez istniejące wpisy - przypisanie do phx (Odbudowa widoczności historycznej)
     unassigned_entries = db.query(models.TimeEntry).filter(models.TimeEntry.user_id == None).all()
     for entry in unassigned_entries:
         entry.user_id = phx_user.id
     
-    unassigned_subprocesses = db.query(models.Subprocess).all()
-    for sp in unassigned_subprocesses:
-        if phx_user not in sp.users:
+    all_subprocesses = db.query(models.Subprocess).all()
+    for sp in all_subprocesses:
+        if not sp.users: # Jeśli nikt nie jest przypisany, oddajemy go PHXowi
             sp.users.append(phx_user)
 
     db.commit()
@@ -164,8 +162,17 @@ def delete_process(p_id: int, db: Session = Depends(get_db), current_user: model
 @app.post("/api/subprocesses", response_model=schemas.Subprocess)
 def create_subprocess(subprocess: schemas.SubprocessCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_subprocess = models.Subprocess(name=subprocess.name, process_id=subprocess.process_id)
-    # Kto tworzy taska - od razu do niego dołącza
-    db_subprocess.users.append(current_user)
+    
+    # Jeśli podano user_id, przypisz tę osobę, w przeciwnym razie autora (siebie)
+    if subprocess.user_id:
+        target_user = db.query(models.User).filter(models.User.id == subprocess.user_id).first()
+        if target_user:
+            db_subprocess.users.append(target_user)
+        else:
+            db_subprocess.users.append(current_user)
+    else:
+        db_subprocess.users.append(current_user)
+        
     db.add(db_subprocess)
     db.commit()
     db.refresh(db_subprocess)

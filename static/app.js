@@ -26,6 +26,13 @@ const assignOverlay = document.getElementById('assignOverlay');
 const assignUserSelect = document.getElementById('assignUserSelect');
 const assignTaskLabel = document.getElementById('assignTaskLabel');
 
+// Quick Add Elements
+const quickAddTaskCard = document.getElementById('quickAddTaskCard');
+const quickProcessSelect = document.getElementById('quickProcessSelect');
+const quickTaskName = document.getElementById('quickTaskName');
+const quickUserSelect = document.getElementById('quickUserSelect');
+const btnQuickAddConfirm = document.getElementById('btnQuickAddConfirm');
+
 let currentAssignTaskId = null;
 let systemUsers = [];
 
@@ -105,6 +112,9 @@ async function appInit() {
         const res = await apiFetch('/api/me');
         currentUser = await res.json();
         footerUserLabel.innerText = `Zalogowany jako: ${currentUser.username}`;
+        
+        // Initial population of selects
+        fetchAdminData(); 
         fetchProcesses();
     } catch(e) {}
 }
@@ -177,13 +187,26 @@ async function fetchAdminData() {
         // Fetch processes
         let res = await apiFetch('/api/processes');
         let data = await res.json();
-        parentProcessSelect.innerHTML = '<option value="">Wybierz docelowy Process...</option>';
-        data.forEach(p => { parentProcessSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+        
+        const populateSelect = (select) => {
+            select.innerHTML = '<option value="">Wybierz...</option>';
+            data.forEach(p => { select.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+        };
+        
+        populateSelect(parentProcessSelect);
+        populateSelect(quickProcessSelect);
+
         renderAdminEditList(data);
 
         // Fetch users
         res = await apiFetch('/api/users');
         systemUsers = await res.json();
+        
+        quickUserSelect.innerHTML = '<option value="">Przypisz do...</option>';
+        systemUsers.forEach(u => {
+            quickUserSelect.innerHTML += `<option value="${u.id}">${u.username}</option>`;
+        });
+
         renderAdminUserList(systemUsers);
     } catch(e) {}
 }
@@ -435,6 +458,32 @@ document.getElementById('btnAddSubprocess').addEventListener('click', async () =
     if(!parentId || !name) return;
     await apiFetch('/api/subprocesses', { method: 'POST', body: JSON.stringify({ name, process_id: parseInt(parentId) }) });
     document.getElementById('newSubprocessName').value = ''; showToast("Utworzono pusty Task z Twoim przypisaniem"); fetchAdminData();
+});
+
+// Quick Add Handler
+btnQuickAddConfirm.addEventListener('click', async () => {
+    const pId = quickProcessSelect.value;
+    const name = quickTaskName.value;
+    const uId = quickUserSelect.value;
+    
+    if(!pId || !name) return showToast("Wypełnij Proces i Nazwę!");
+    
+    try {
+        await apiFetch('/api/subprocesses', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                name: name, 
+                process_id: parseInt(pId),
+                user_id: uId ? parseInt(uId) : null
+            })
+        });
+        showToast(`Utworzono nowy Task [ID: NOWE]`);
+        quickTaskName.value = '';
+        quickAddTaskCard.classList.add('hidden');
+        fetchProcesses();
+    } catch(e) {
+        showToast("Błąd przy tworzeniu taska");
+    }
 });
 
 // Reporting (Uses token in URL)

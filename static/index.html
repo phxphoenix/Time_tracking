@@ -55,8 +55,30 @@
             
             <!-- Tasks View -->
             <div id="view-tasks" class="view-section active">
-                <h2>Transact Tasks</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2>Transact Tasks</h2>
+                    <button class="btn primary" onclick="document.getElementById('quickAddTaskCard').classList.toggle('hidden')">
+                        <i class="fa-solid fa-bolt"></i> Quick Create
+                    </button>
+                </div>
+                
                 <p style="color:var(--text-secondary); margin-bottom: 20px;">Widzisz wyłącznie Taski, do których jesteś przypisany jako rejestrujący czas.</p>
+                
+                <!-- Quick Add Task Dashboard -->
+                <div id="quickAddTaskCard" class="admin-card glass hidden" style="margin-bottom: 30px; border-left: 4px solid var(--accent-blue);">
+                    <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-plus-circle"></i> Szybkie Tworzenie Zadania (Nowe TaskID)</h3>
+                    <div class="input-group" style="flex-wrap: wrap;">
+                        <select id="quickProcessSelect" style="flex: 1; min-width: 180px;">
+                            <option value="">Wybierz Proces...</option>
+                        </select>
+                        <input type="text" id="quickTaskName" placeholder="Nazwa nowego zadania..." style="flex: 2; min-width: 250px;">
+                        <select id="quickUserSelect" style="flex: 1; min-width: 150px;">
+                            <option value="">Przypisz do...</option>
+                        </select>
+                        <button id="btnQuickAddConfirm" class="btn success"><i class="fa-solid fa-check"></i> Utwórz</button>
+                    </div>
+                </div>
+
                 <div id="processesList" class="processes-list">
                     <!-- Populated by JS -->
                 </div>
