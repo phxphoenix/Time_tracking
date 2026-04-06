@@ -11,6 +11,7 @@ import csv
 from io import StringIO
 from typing import List
 from pydantic import BaseModel
+from sqlalchemy import text
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -27,6 +28,19 @@ def get_db():
 # Initialize default data and migrate history
 def init_db():
     db = SessionLocal()
+    
+    # Ręczna migracja struktury (SQLAlchemy create_all nie dodaje kolumn do istniejących tabel)
+    try:
+        # Próba dodania kolumny user_id do time_entries
+        db.execute(text("ALTER TABLE time_entries ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+        db.commit()
+        print("Migracja: Dodano kolumnę user_id do tabeli time_entries.")
+    except Exception:
+        # Jeśli kolumna już istnieje, silnik rzuci błąd - ignorujemy go
+        db.rollback()
+
+    # Tworzenie brakujących tabel (task_users)
+    models.Base.metadata.create_all(bind=engine)
     
     phx_user = db.query(models.User).filter(models.User.username == "phx").first()
     if not phx_user:
