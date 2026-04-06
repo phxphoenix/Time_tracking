@@ -9,6 +9,8 @@ import datetime
 import os
 import csv
 from io import StringIO
+from typing import List
+from pydantic import BaseModel
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -22,15 +24,30 @@ def get_db():
     finally:
         db.close()
 
-# Initialize default data
+# Initialize default data and migrate history
 def init_db():
     db = SessionLocal()
-    if not db.query(models.User).filter(models.User.username == "phx").first():
-        hashed = auth.get_password_hash("0zKvUd8W@!P#MPpTWgA%")
-        default_user = models.User(username="phx", email="phx.poczta@gmail.com", hashed_password=hashed)
-        db.add(default_user)
-        db.commit()
     
+    phx_user = db.query(models.User).filter(models.User.username == "phx").first()
+    if not phx_user:
+        hashed = auth.get_password_hash("0zKvUd8W@!P#MPpTWgA%")
+        phx_user = models.User(username="phx", email="phx.poczta@gmail.com", hashed_password=hashed)
+        db.add(phx_user)
+        db.commit()
+        db.refresh(phx_user)
+    
+    # Przebieg przez istniejące wpisy - przypisanie do phx
+    unassigned_entries = db.query(models.TimeEntry).filter(models.TimeEntry.user_id == None).all()
+    for entry in unassigned_entries:
+        entry.user_id = phx_user.id
+    
+    unassigned_subprocesses = db.query(models.Subprocess).all()
+    for sp in unassigned_subprocesses:
+        if phx_user not in sp.users:
+            sp.users.append(phx_user)
+
+    db.commit()
+
     if not db.query(models.Process).first():
         p1 = models.Process(name="Proces 1")
         db.add(p1)
@@ -38,6 +55,7 @@ def init_db():
         db.refresh(p1)
         for i in range(1, 4):
             sp = models.Subprocess(name=f"Subproces {i}", process_id=p1.id)
+            sp.users.append(phx_user)
             db.add(sp)
         db.commit()
     db.close()
@@ -47,7 +65,6 @@ init_db()
 # AUTHENTICATION
 @app.post("/api/auth/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # OAuth2 specifies 'username' field, but user might send 'email' in the username field
     user = db.query(models.User).filter((models.User.username == form_data.username) | (models.User.email == form_data.username)).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Nieprawidłowy login lub hasło", headers={"WWW-Authenticate": "Bearer"})
@@ -95,7 +112,17 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
 # API Endpoints (Secured)
 @app.get("/api/processes", response_model=list[schemas.Process])
 def read_processes(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    return db.query(models.Process).all()
+    all_processes = db.query(models.Process).all()
+    # Filtrujemy by odsyłać na front TYLKO "Tasks" (subprocesses) w których uczestniczy obecny user
+    filtered_processes = []
+    for p in all_processes:
+        valid_sub = [sp for sp in p.subprocesses if current_user in sp.users]
+        if valid_sub or not p.subprocesses:
+            # Tworzymy kopię w locie by nie niszczyć obiektu w DB, ale do zwrotki schema wystarczy zmodyfikować klon
+            p_copy = models.Process(id=p.id, name=p.name)
+            p_copy.subprocesses = valid_sub
+            filtered_processes.append(p_copy)
+    return filtered_processes
 
 @app.post("/api/processes", response_model=schemas.Process)
 def create_process(process: schemas.ProcessCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -123,6 +150,8 @@ def delete_process(p_id: int, db: Session = Depends(get_db), current_user: model
 @app.post("/api/subprocesses", response_model=schemas.Subprocess)
 def create_subprocess(subprocess: schemas.SubprocessCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_subprocess = models.Subprocess(name=subprocess.name, process_id=subprocess.process_id)
+    # Kto tworzy taska - od razu do niego dołącza
+    db_subprocess.users.append(current_user)
     db.add(db_subprocess)
     db.commit()
     db.refresh(db_subprocess)
@@ -151,6 +180,25 @@ def toggle_subprocess(sp_id: int, db: Session = Depends(get_db), current_user: m
     db.refresh(db_sp)
     return db_sp
 
+class AssignUserRequest(BaseModel):
+    user_id: int
+
+@app.post("/api/subprocesses/{sp_id}/assign")
+def assign_user(sp_id: int, payload: AssignUserRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
+    if not db_sp:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    user_to_add = db.query(models.User).filter(models.User.id == payload.user_id).first()
+    if not user_to_add:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if user_to_add not in db_sp.users:
+        db_sp.users.append(user_to_add)
+        db.commit()
+    return {"message": "User assigned"}
+
+
 @app.post("/api/subprocesses/{sp_id}/allocate", response_model=schemas.TimeEntry)
 def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_sp = db.query(models.Subprocess).filter(models.Subprocess.id == sp_id).first()
@@ -160,6 +208,7 @@ def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session =
     
     db_entry = models.TimeEntry(
         subprocess_id=sp_id,
+        user_id=current_user.id,
         time_allocated_seconds=time_entry.time_allocated_seconds,
         start_time=start_time,
         stop_time=stop_time
@@ -169,32 +218,31 @@ def allocate_time(sp_id: int, time_entry: schemas.TimeEntryCreate, db: Session =
     db.refresh(db_entry)
     return db_entry
 
-# W autoryzacji raportów nie używamy Depend z uwagi na otwieranie przez '_blank', użyto prostego zabezpieczenia parametrem (dla Auth w SPA)
-# Choć poprawnie byłoby przesyląc go frontendem jako BLOB. Dla uproszczenia (bo to export .txt) dodajemy token w query param: ?token=XYZ
 @app.get("/api/report/allcharges")
 def generate_report(token: str, db: Session = Depends(get_db)):
-    auth.get_current_user(token, db) # Rzuca HTTP 401 jeśli zły
+    auth.get_current_user(token, db)
     entries = db.query(models.TimeEntry).all()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    lines = ["+-------------------------------------------------------------------------------------------------------+",
-             "|                            ALL CHARGES REPORT - TIME TRACKER RETRO EXPORT                             |",
-             "+-------------------------------------------------------------------------------------------------------+",
-             "| PROCES                  | SUBPROCESS              | TIME (s) | START                | STOP                |",
-             "+-------------------------------------------------------------------------------------------------------+"]
+    lines = ["+-------------------------------------------------------------------------------------------------------------------+",
+             "|                            ALL CHARGES REPORT - TIME TRACKER RETRO EXPORT                                 |",
+             "+-------------------------------------------------------------------------------------------------------------------+",
+             "| PROCES                  | SUBPROCESS              | USER                 | TIME (s) | START                | STOP                |",
+             "+-------------------------------------------------------------------------------------------------------------------+"]
              
     for e in entries:
         sp = e.subprocess
         p = sp.process
         p_name = p.name[:23].ljust(23)
         sp_name = sp.name[:23].ljust(23)
+        u_name = (e.user.username if e.user else "UNKNOWN")[:20].ljust(20)
         time_s = str(e.time_allocated_seconds).ljust(8)
         start_time = e.start_time.strftime("%Y-%m-%d %H:%M:%S")
         stop_time = e.stop_time.strftime("%Y-%m-%d %H:%M:%S")
         
-        lines.append(f"| {p_name} | {sp_name} | {time_s} | {start_time}  | {stop_time}  |")
+        lines.append(f"| {p_name} | {sp_name} | {u_name} | {time_s} | {start_time}  | {stop_time}  |")
         
-    lines.append("+-------------------------------------------------------------------------------------------------------+")
+    lines.append("+-------------------------------------------------------------------------------------------------------------------+")
     content = "\n".join(lines)
     return PlainTextResponse(content, media_type="text/plain", headers={"Content-Disposition": f"attachment; filename=AllChargesReport_{timestamp}.txt"})
 
@@ -206,15 +254,20 @@ def generate_csv(token: str, db: Session = Depends(get_db)):
     
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Proces", "Subprocess", "TimeAllocated(s)", "Start", "Stop"])
+    writer.writerow(["Proces", "Subprocess", "User", "TimeAllocated(s)", "Start", "Stop"])
     for e in entries:
         sp = e.subprocess
         p = sp.process
-        writer.writerow([p.name, sp.name, e.time_allocated_seconds, e.start_time.isoformat(), e.stop_time.isoformat()])
+        u_name = e.user.username if e.user else "UNKNOWN"
+        writer.writerow([p.name, sp.name, u_name, e.time_allocated_seconds, e.start_time.isoformat(), e.stop_time.isoformat()])
         
     return PlainTextResponse(output.getvalue(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=AllChargesReport_{timestamp}.csv"})
 
-# Static Files
+# Endpoint for frontend to fetch the current active user info
+@app.get("/api/me", response_model=schemas.User)
+def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

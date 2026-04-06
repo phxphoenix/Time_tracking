@@ -125,6 +125,7 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    position: relative;
 }
 
 /* Sidebar */
@@ -166,6 +167,7 @@ body {
 .content-area {
     flex: 1;
     padding: 40px;
+    padding-bottom: 80px; /* space for footer */
     overflow-y: auto;
 }
 
@@ -224,16 +226,22 @@ h2 {
 
 .subprocess-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     padding: 15px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .subprocess-row:last-child {
     border-bottom: none;
 }
+.sp-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
 .sp-name {
     flex: 1;
+    font-weight: 500;
 }
 
 .sp-actions {
@@ -344,6 +352,14 @@ select option {
 }
 .btn.primary:hover {
     background: #2563eb;
+    transform: translateY(-2px);
+}
+.btn.success {
+    background: var(--accent-green);
+    color: white;
+}
+.btn.success:hover {
+    background: #059669;
     transform: translateY(-2px);
 }
 
@@ -476,7 +492,7 @@ select option {
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.3s ease;
 }
 .login-overlay.hidden {
     opacity: 0;
@@ -504,4 +520,66 @@ select option {
     align-items: center;
     padding: 10px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* New specific styles for Phase 4 */
+
+.app-footer {
+    position: absolute;
+    bottom: 0;
+    left: 250px;
+    right: 0;
+    height: 40px;
+    background: rgba(15, 23, 42, 0.9);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    z-index: 10;
+}
+
+.app-version .badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent-blue);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 5px;
+}
+
+.time-details-container {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.time-details-container.open {
+    display: block;
+}
+
+.time-details-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.time-detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 5px 0;
+}
+.time-detail-row .user-badge {
+    color: var(--accent-blue);
+    font-weight: 500;
 }

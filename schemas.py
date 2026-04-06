@@ -21,6 +21,7 @@ class UserUpdateOptions(BaseModel):
 class User(UserBase):
     id: int
     class Config:
+        from_attributes = True
         orm_mode = True
 
 class TimeEntryBase(BaseModel):
@@ -32,10 +33,13 @@ class TimeEntryCreate(TimeEntryBase):
 class TimeEntry(TimeEntryBase):
     id: int
     subprocess_id: int
+    user_id: int
+    user: Optional[User] = None
     start_time: datetime
     stop_time: datetime
 
     class Config:
+        from_attributes = True
         orm_mode = True
 
 class SubprocessBase(BaseModel):
@@ -48,9 +52,11 @@ class Subprocess(SubprocessBase):
     id: int
     process_id: int
     completed: bool
+    users: List[User] = []
     time_entries: List[TimeEntry] = []
 
     class Config:
+        from_attributes = True
         orm_mode = True
 
 class ProcessBase(BaseModel):
@@ -64,4 +70,5 @@ class Process(ProcessBase):
     subprocesses: List[Subprocess] = []
 
     class Config:
+        from_attributes = True
         orm_mode = True

@@ -42,8 +42,8 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <ul>
-                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks</li>
-                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable</li>
+                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks (Zespołowe)</li>
+                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable (Bieżący User)</li>
                 <li data-view="reporting"><i class="fa-solid fa-chart-pie"></i> Reporting</li>
                 <li data-view="admin"><i class="fa-solid fa-gear"></i> Admin</li>
                 <li id="btnLogout" style="margin-top:auto; color:var(--accent-red);"><i class="fa-solid fa-arrow-right-from-bracket"></i> Wyloguj</li>
@@ -56,6 +56,7 @@
             <!-- Tasks View -->
             <div id="view-tasks" class="view-section active">
                 <h2>Transact Tasks</h2>
+                <p style="color:var(--text-secondary); margin-bottom: 20px;">Widzisz wyłącznie Taski, do których jesteś przypisany jako rejestrujący czas.</p>
                 <div id="processesList" class="processes-list">
                     <!-- Populated by JS -->
                 </div>
@@ -64,14 +65,14 @@
             <!-- Timetable View -->
             <div id="view-timetable" class="view-section">
                 <div class="timetable-header">
-                    <h2>Timetable</h2>
+                    <h2>Mój Osobisty Timetable</h2>
                     <div class="date-navigator">
                         <button id="btnPrevDay" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
                         <span id="currentDateDisplay" class="date-display">Dzisiaj</span>
                         <button id="btnNextDay" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
-                <p class="subtitle">Podsumowanie czasu na procesy dla wybranego dnia</p>
+                <p class="subtitle">Podsumowanie Twojego osobistego czasu na taskach dla wybranego dnia</p>
                 <div id="calendarContainer" class="calendar-container">
                     <!-- Populated by JS -->
                 </div>
@@ -83,7 +84,7 @@
                 <div class="report-card">
                     <i class="fa-solid fa-file-export report-icon"></i>
                     <h3>AllChargesReport</h3>
-                    <p>Eksportuj wszystkie zalokowane procesy i podprocesy.</p>
+                    <p>Eksportuj wszystkie zalokowane procesy, taski wraz ze sprawcami i czasem prac.</p>
                     <div class="button-row" style="display:flex; justify-content:center; gap:15px; margin-top:20px;">
                         <button id="btnExportReportTxt" class="btn primary"><i class="fa-solid fa-file-lines"></i> Wygeneruj Retro .TXT</button>
                         <button id="btnExportReportCsv" class="btn success" style="background-color: var(--accent-green);"><i class="fa-solid fa-file-csv"></i> Wygeneruj surowy .CSV</button>
@@ -104,14 +105,15 @@
                         </div>
                     </div>
                     <div class="admin-card">
-                        <h3>Dodaj Subprocess</h3>
+                        <h3>Utwórz Pusty Task</h3>
                         <div class="input-group">
                             <select id="parentProcessSelect">
-                                <option value="">Wybierz docelowy...</option>
+                                <option value="">Wybierz docelowy Process...</option>
                             </select>
-                            <input type="text" id="newSubprocessName" placeholder="Nazwa subprocesu...">
+                            <input type="text" id="newSubprocessName" placeholder="Nazwa taska...">
                             <button id="btnAddSubprocess" class="btn primary">Dodaj</button>
                         </div>
+                        <p style="font-size: 11px; margin-top:5px; color:var(--text-secondary);">Autor automatycznie zostaje dołączony do stworzonego Taska.</p>
                     </div>
                     <div class="admin-card">
                         <h3>Users (Autoryzacja z Hash/Hasłem)</h3>
@@ -125,17 +127,36 @@
                     </div>
                 </div>
                 
-                <h3 style="margin-top: 40px; margin-bottom: 20px;">Edycja Zapisanych Danych Czasowych</h3>
+                <h3 style="margin-top: 40px; margin-bottom: 20px;">Edycja Zapisanych Strukturalnie Danych</h3>
                 <div id="adminEditList" class="processes-list">
                     <!-- Populated by JS -->
                 </div>
             </div>
 
         </main>
+        
+        <!-- Application Footer -->
+        <footer class="app-footer">
+            <div id="footerUserLabel">Ładowanie użytkownika...</div>
+            <div class="app-version">TimeTracker Pro | wersja aplikacji <span class="badge">v1.1.0 (Faza 4)</span></div>
+        </footer>
     </div>
 
     <!-- Toast templates -->
     <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- Assign User Modal (Appends dynamic content) -->
+    <div id="assignOverlay" class="login-overlay hidden">
+        <div class="login-box glass">
+            <h3><i class="fa-solid fa-user-plus"></i> Przypisz Użytkownika</h3>
+            <p style="margin-bottom:15px;" id="assignTaskLabel"></p>
+            <select id="assignUserSelect" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white;"></select>
+            <div style="display:flex; gap:10px;">
+                <button id="btnAssignConfirm" class="btn success" style="flex:1;">Przypisz</button>
+                <button id="btnAssignCancel" class="btn primary" style="background:#444; flex:1;">Anuluj</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/static/app.js"></script>
 </body>

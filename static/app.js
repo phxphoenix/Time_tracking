@@ -7,6 +7,7 @@ let currentTimetableDate = new Date();
 
 // Auth State
 let authToken = localStorage.getItem('timeTrackerToken');
+let currentUser = null;
 
 // DOM Elements
 const loginOverlay = document.getElementById('loginOverlay');
@@ -20,6 +21,13 @@ const adminEditList = document.getElementById('adminEditList');
 const adminUserList = document.getElementById('adminUserList');
 const parentProcessSelect = document.getElementById('parentProcessSelect');
 const currentDateDisplay = document.getElementById('currentDateDisplay');
+const footerUserLabel = document.getElementById('footerUserLabel');
+const assignOverlay = document.getElementById('assignOverlay');
+const assignUserSelect = document.getElementById('assignUserSelect');
+const assignTaskLabel = document.getElementById('assignTaskLabel');
+
+let currentAssignTaskId = null;
+let systemUsers = [];
 
 // API Wrapper to include Token automatically
 async function apiFetch(url, options = {}) {
@@ -54,7 +62,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     if(!user || !pass) return;
 
     const formData = new FormData();
-    formData.append('username', user); // FastAPI OAuth2 accepts email here too because of our backend code
+    formData.append('username', user); 
     formData.append('password', pass);
 
     try {
@@ -85,19 +93,22 @@ document.getElementById('btnLogout').addEventListener('click', () => logout());
 
 function logout() {
     authToken = null;
+    currentUser = null;
     localStorage.removeItem('timeTrackerToken');
     loginOverlay.classList.remove('hidden');
-    // Zatrzymanie zegara
     if(isClockRunning) toggleClock();
 }
 
 // Start app data fetch after login
-function appInit() {
-    fetchProcesses();
+async function appInit() {
+    try {
+        const res = await apiFetch('/api/me');
+        currentUser = await res.json();
+        footerUserLabel.innerText = `Zalogowany jako: ${currentUser.username}`;
+        fetchProcesses();
+    } catch(e) {}
 }
 
-
-// Format Time hh:mm:ss
 function formatTime(seconds) {
     const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
     const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
@@ -166,21 +177,32 @@ async function fetchAdminData() {
         // Fetch processes
         let res = await apiFetch('/api/processes');
         let data = await res.json();
-        parentProcessSelect.innerHTML = '<option value="">Wybierz docelowy...</option>';
+        parentProcessSelect.innerHTML = '<option value="">Wybierz docelowy Process...</option>';
         data.forEach(p => { parentProcessSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
         renderAdminEditList(data);
 
         // Fetch users
         res = await apiFetch('/api/users');
-        data = await res.json();
-        renderAdminUserList(data);
+        systemUsers = await res.json();
+        renderAdminUserList(systemUsers);
     } catch(e) {}
 }
 
 // Render Functions
 function renderProcesses(processes) {
     processesList.innerHTML = '';
+    
+    // Check if empty
+    let hasTasks = false;
+    processes.forEach(p => { if(p.subprocesses && p.subprocesses.length > 0) hasTasks = true; });
+    if(!hasTasks) {
+        processesList.innerHTML = '<p style="color:var(--text-secondary); text-align:center; padding: 20px;">Brak przypisanych tasków dla Ciebie w jakimkolwiek procesie.</p>';
+        return;
+    }
+
     processes.forEach(p => {
+        if(!p.subprocesses || p.subprocesses.length === 0) return; // Ukryj puste procesy
+
         const item = document.createElement('div');
         item.className = 'process-item';
         
@@ -195,11 +217,40 @@ function renderProcesses(processes) {
         p.subprocesses.forEach(sp => {
             const row = document.createElement('div');
             row.className = `subprocess-row ${sp.completed ? 'completed' : ''}`;
+            
+            // Build Time Details HTML
+            let timeSums = {};
+            let totalTaskTime = 0;
+            sp.time_entries.forEach(e => {
+                const uName = e.user ? e.user.username : 'Unknown';
+                if(!timeSums[uName]) timeSums[uName] = 0;
+                timeSums[uName] += e.time_allocated_seconds;
+                totalTaskTime += e.time_allocated_seconds;
+            });
+            
+            let timeDetailsHtml = '';
+            Object.keys(timeSums).forEach(uname => {
+                timeDetailsHtml += `<div class="time-detail-row"><span class="user-badge"><i class="fa-solid fa-user"></i> ${uname}</span><span>${formatTime(timeSums[uname])}</span></div>`;
+            });
+            if(Object.keys(timeSums).length === 0) {
+                timeDetailsHtml = '<div style="color:var(--text-secondary); font-size:12px;">Brak zalogowanego czasu.</div>';
+            }
+
             row.innerHTML = `
-                <div class="sp-name">- ${sp.name}</div>
-                <div class="sp-actions">
-                    <button class="btn-icon allocate" title="Allocate Time" onclick="allocateTime(${sp.id}, '${sp.name}')"><i class="fa-regular fa-clock"></i></button>
-                    <button class="btn-icon" title="Complete / Restore" onclick="toggleComplete(${sp.id})"><i class="fa-solid ${sp.completed ? 'fa-rotate-left' : 'fa-check'}"></i></button>
+                <div class="sp-row-top">
+                    <div class="sp-name"><b>[TaskID: ${sp.id}]</b> ${sp.name} <i class="fa-solid fa-clock-rotate-left details-toggler" style="margin-left:10px; color:var(--text-secondary); cursor:pointer;" title="Time Details" onclick="this.closest('.subprocess-row').querySelector('.time-details-container').classList.toggle('open')"></i></div>
+                    <div class="sp-actions">
+                        <button class="btn-icon" title="Dodaj/Zaproś Usera do Taska" onclick="openAssignModal(${sp.id}, '${sp.name}')"><i class="fa-solid fa-user-plus"></i></button>
+                        <button class="btn-icon allocate" title="Alokuj Mój Czas" onclick="allocateTime(${sp.id}, '${sp.name}')"><i class="fa-regular fa-clock"></i></button>
+                        <button class="btn-icon" title="Oznacz Zakończone" onclick="toggleComplete(${sp.id})"><i class="fa-solid ${sp.completed ? 'fa-rotate-left' : 'fa-check'}"></i></button>
+                    </div>
+                </div>
+                <div class="time-details-container glass">
+                    <div class="time-details-header">
+                        <span>Raport Czasu Użytkowników</span>
+                        <span>Suma: ${formatTime(totalTaskTime)}</span>
+                    </div>
+                    ${timeDetailsHtml}
                 </div>
             `;
             subcontainer.appendChild(row);
@@ -232,10 +283,12 @@ function renderAdminEditList(processes) {
             const row = document.createElement('div');
             row.className = `subprocess-row`;
             row.innerHTML = `
-                <div class="sp-name">- ${sp.name}</div>
-                <div class="sp-actions">
-                    <button class="btn-icon edit-btn" onclick="editSubprocess(${sp.id}, '${sp.name}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn-icon delete-btn" onclick="deleteSubprocess(${sp.id})"><i class="fa-solid fa-trash"></i></button>
+                <div class="sp-row-top">
+                    <div class="sp-name"><b>[TaskID: ${sp.id}]</b> ${sp.name}</div>
+                    <div class="sp-actions">
+                        <button class="btn-icon edit-btn" onclick="editSubprocess(${sp.id}, '${sp.name}')"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-icon delete-btn" onclick="deleteSubprocess(${sp.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>
             `;
             subcontainer.appendChild(row);
@@ -277,11 +330,45 @@ window.allocateTime = async (spId, spName) => {
         });
         showToast(`Zalokowano ${formatTime(timeToAllocate)} na ${spName}`);
         taskTimeSeconds = 0; taskTimeDisplay.innerText = formatTime(taskTimeSeconds);
+        fetchProcesses(); // Refresh times
     } catch(e) {}
 };
 window.toggleComplete = async (spId) => {
     try { await apiFetch(`/api/subprocesses/${spId}/toggle_complete`, { method: 'PATCH' }); fetchProcesses(); } catch(e) {}
 };
+
+// Modals Setup
+window.openAssignModal = async (spId, spName) => {
+    currentAssignTaskId = spId;
+    assignTaskLabel.innerHTML = `Dla obszaru: <b>${spName}</b>`;
+    assignOverlay.classList.remove('hidden');
+    
+    try {
+        const res = await apiFetch('/api/users');
+        const users = await res.json();
+        assignUserSelect.innerHTML = '';
+        users.forEach(u => {
+            assignUserSelect.innerHTML += `<option value="${u.id}">${u.username}</option>`;
+        });
+    } catch(e) {}
+};
+
+document.getElementById('btnAssignCancel').addEventListener('click', () => { assignOverlay.classList.add('hidden'); });
+document.getElementById('btnAssignConfirm').addEventListener('click', async () => {
+    const u_id = assignUserSelect.value;
+    if(!u_id || !currentAssignTaskId) return;
+    try {
+        await apiFetch(`/api/subprocesses/${currentAssignTaskId}/assign`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id: parseInt(u_id) })
+        });
+        showToast("Przypisano poprawnie.");
+        assignOverlay.classList.add('hidden');
+        fetchProcesses();
+    } catch(e) {
+        showToast("Wystąpił błąd");
+    }
+});
 
 // Admin Edit Actions
 window.editProcess = async (id, oldName) => {
@@ -297,14 +384,14 @@ window.deleteProcess = async (id) => {
     }
 };
 window.editSubprocess = async (id, oldName) => {
-    const newName = prompt("Podaj nową nazwę Subprocesu:", oldName);
+    const newName = prompt("Podaj nową nazwę Zadania (Taska):", oldName);
     if(newName && newName !== oldName) {
         await apiFetch(`/api/subprocesses/${id}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
         showToast(`Zmieniono na ${newName}`); fetchAdminData();
     }
 };
 window.deleteSubprocess = async (id) => {
-    if(confirm("Usunąć Subproces?")) {
+    if(confirm("Usunąć ten Task?")) {
         await apiFetch(`/api/subprocesses/${id}`, { method: 'DELETE' }); showToast("Usunięto."); fetchAdminData();
     }
 };
@@ -335,7 +422,7 @@ window.deleteUser = async (id, name) => {
     }
 };
 
-// Admin Add Process
+// Admin Add Objects
 document.getElementById('btnAddProcess').addEventListener('click', async () => {
     const name = document.getElementById('newProcessName').value;
     if(!name) return;
@@ -347,7 +434,7 @@ document.getElementById('btnAddSubprocess').addEventListener('click', async () =
     const name = document.getElementById('newSubprocessName').value;
     if(!parentId || !name) return;
     await apiFetch('/api/subprocesses', { method: 'POST', body: JSON.stringify({ name, process_id: parseInt(parentId) }) });
-    document.getElementById('newSubprocessName').value = ''; showToast("Dodano subproces"); fetchAdminData();
+    document.getElementById('newSubprocessName').value = ''; showToast("Utworzono pusty Task z Twoim przypisaniem"); fetchAdminData();
 });
 
 // Reporting (Uses token in URL)
@@ -359,6 +446,8 @@ document.getElementById('btnPrevDay').addEventListener('click', () => { currentT
 document.getElementById('btnNextDay').addEventListener('click', () => { currentTimetableDate.setDate(currentTimetableDate.getDate() + 1); renderTimetable(); });
 
 async function renderTimetable() {
+    if(!currentUser) return;
+
     const todayStr = formatDate(new Date());
     const currentStr = formatDate(currentTimetableDate);
     currentDateDisplay.innerText = currentStr === todayStr ? 'Dzisiaj' : currentStr;
@@ -374,7 +463,12 @@ async function renderTimetable() {
             pTimes[p.id] = { name: p.name, time: 0 };
             p.subprocesses.forEach(sp => {
                 sp.time_entries.forEach(e => {
-                    if (e.start_time.split('T')[0] === currentStr) pTimes[p.id].time += e.time_allocated_seconds;
+                    // FILTER OUT OTHER USERS' TIME ENTRIES IN TIMETABLE !!!
+                    if (e.user_id !== currentUser.id) return;
+
+                    if (e.start_time.split('T')[0] === currentStr) {
+                        pTimes[p.id].time += e.time_allocated_seconds;
+                    }
                 });
             });
             if(pTimes[p.id].time > maxTime) maxTime = pTimes[p.id].time;
@@ -393,6 +487,6 @@ async function renderTimetable() {
                 </div>
             `;
         });
-        if(!hasEntries) container.innerHTML += '<p style="text-align:center; color: var(--text-secondary); margin-top: 30px;">Brak wpisów.</p>';
+        if(!hasEntries) container.innerHTML += '<p style="text-align:center; color: var(--text-secondary); margin-top: 30px;">Brak Twoich logowań dla tego dnia.</p>';
     } catch(e) {}
 }
