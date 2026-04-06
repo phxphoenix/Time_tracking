@@ -189,6 +189,35 @@ if (sidebarOverlay) {
     });
 }
 
+// Desktop Sidebar Collapse Toggle
+const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+const appFooter = document.querySelector('.app-footer');
+
+function updateFooterPosition() {
+    if (window.innerWidth > 768 && appFooter) {
+        if (sidebar.classList.contains('collapsed')) {
+            appFooter.style.left = 'var(--sidebar-collapsed-width)';
+        } else {
+            appFooter.style.left = 'var(--sidebar-width)';
+        }
+    }
+}
+
+// Restore sidebar collapsed state from localStorage
+if (localStorage.getItem('sidebarCollapsed') === 'true') {
+    sidebar.classList.add('collapsed');
+    updateFooterPosition();
+}
+
+if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+        updateFooterPosition();
+    });
+}
+
 function showToast(msg) {
     const toast = document.createElement('div');
     toast.className = 'toast';

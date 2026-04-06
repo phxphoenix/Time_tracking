@@ -43,12 +43,15 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <ul>
-                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i> Tasks</li>
-                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i> Timetable</li>
-                <li data-view="reporting"><i class="fa-solid fa-chart-pie"></i> Reporting</li>
-                <li data-view="admin"><i class="fa-solid fa-gear"></i> Admin</li>
-                <li id="btnLogout" style="margin-top:auto; color:var(--accent-red);"><i class="fa-solid fa-arrow-right-from-bracket"></i> Wyloguj</li>
+                <li class="active" data-view="tasks"><i class="fa-solid fa-list-check"></i><span class="menu-text">Tasks</span></li>
+                <li data-view="timetable"><i class="fa-solid fa-calendar-day"></i><span class="menu-text">Timetable</span></li>
+                <li data-view="reporting"><i class="fa-solid fa-chart-pie"></i><span class="menu-text">Reporting</span></li>
+                <li data-view="admin"><i class="fa-solid fa-gear"></i><span class="menu-text">Admin</span></li>
+                <li id="btnLogout" style="margin-top:auto; color:var(--accent-red);"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="menu-text">Wyloguj</span></li>
             </ul>
+            <button id="sidebarToggleBtn" class="sidebar-toggle-btn" title="Zwiń/Rozwiń menu">
+                <i class="fa-solid fa-angles-left"></i>
+            </button>
         </nav>
 
         <!-- Main Content -->

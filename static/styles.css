@@ -8,6 +8,8 @@
     --accent-green: #10b981;
     --accent-red: #ef4444;
     --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    --sidebar-width: 170px;
+    --sidebar-collapsed-width: 56px;
 }
 
 * {
@@ -130,25 +132,56 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 250px;
+    width: var(--sidebar-width);
     background: rgba(30, 41, 59, 0.4);
     border-right: 1px solid var(--border-color);
     padding: 20px 0;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
 }
 
 .sidebar ul {
     list-style: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar ul li {
-    padding: 15px 25px;
+    padding: 14px 16px;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--text-secondary);
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     gap: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar ul li i {
+    min-width: 20px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.menu-text {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar.collapsed .menu-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
 }
 
 .sidebar ul li:hover {
@@ -161,6 +194,34 @@ body {
     background: rgba(59, 130, 246, 0.1);
     border-right: 3px solid var(--accent-blue);
     font-weight: 500;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+    background: none;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar.collapsed .sidebar-toggle-btn i {
+    transform: rotate(180deg);
+}
+
+.sidebar-toggle-btn i {
+    transition: transform 0.3s ease;
 }
 
 /* Content Area */
@@ -527,7 +588,7 @@ select option {
 .app-footer {
     position: absolute;
     bottom: 0;
-    left: 250px;
+    left: var(--sidebar-width);
     right: 0;
     height: 40px;
     background: rgba(15, 23, 42, 0.9);
@@ -539,6 +600,12 @@ select option {
     font-size: 12px;
     color: var(--text-secondary);
     z-index: 10;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed ~ .content-area ~ .app-footer,
+.main-layout:has(.sidebar.collapsed) .app-footer {
+    left: var(--sidebar-collapsed-width);
 }
 
 .app-version .badge {
@@ -588,17 +655,45 @@ select option {
 
 .mobile-menu-btn {
     display: none;
-    background: none;
+    background: rgba(255,255,255,0.05);
     border: none;
     color: var(--text-primary);
-    font-size: 24px;
+    font-size: 22px;
     cursor: pointer;
-    padding: 10px;
-    background: rgba(255,255,255,0.05);
+    padding: 8px 10px;
     border-radius: 8px;
     z-index: 1001;
+    transition: background 0.2s;
 }
 
+.mobile-menu-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Sidebar overlay backdrop */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Tablet breakpoint */
+@media screen and (max-width: 1024px) {
+    :root {
+        --sidebar-width: 160px;
+    }
+}
+
+/* Mobile breakpoint */
 @media screen and (max-width: 768px) {
     body {
         height: auto;
@@ -606,7 +701,13 @@ select option {
     }
 
     .mobile-menu-btn {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar-toggle-btn {
+        display: none;
     }
 
     .topbar {
@@ -614,49 +715,64 @@ select option {
         top: 0;
         left: 0;
         right: 0;
-        padding: 0 15px;
-        height: 60px;
+        padding: 0 12px;
+        height: 56px;
         z-index: 500;
     }
 
     .topbar .logo {
-        font-size: 18px;
+        font-size: 16px;
     }
 
     .timers-container {
-        gap: 10px;
+        gap: 8px;
     }
 
     .timer-box .time {
-        font-size: 16px;
+        font-size: 15px;
     }
 
     .timer-box .label {
         font-size: 9px;
+        letter-spacing: 0.5px;
     }
 
     .clock-btn {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         font-size: 14px;
     }
 
     /* Sidebar drawer */
     .sidebar {
         position: fixed;
-        left: -260px;
+        left: 0;
         top: 0;
         bottom: 0;
-        width: 250px;
+        width: 220px;
         z-index: 1000;
+        transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: rgba(15, 23, 42, 0.98);
         backdrop-filter: blur(20px);
-        padding-top: 70px;
+        padding-top: 65px;
+    }
+
+    .sidebar.collapsed {
+        width: 220px;
+    }
+
+    .sidebar.collapsed .menu-text {
+        opacity: 1;
+        width: auto;
+    }
+
+    .sidebar.collapsed .sidebar-toggle-btn i {
+        transform: none;
     }
 
     .sidebar.open {
-        transform: translateX(260px);
+        transform: translateX(0);
         box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
 
@@ -666,9 +782,8 @@ select option {
     }
 
     .content-area {
-        padding: 20px;
-        padding-top: 25px;
-        margin-top: 60px; /* Height of fixed topbar */
+        padding: 20px 16px;
+        margin-top: 56px;
         width: 100%;
         overflow-x: hidden;
         overflow-y: visible;
@@ -676,22 +791,29 @@ select option {
     }
 
     .app-footer {
-        left: 0;
+        position: relative;
+        left: 0 !important;
         flex-direction: column;
         height: auto;
-        padding: 15px 20px;
-        gap: 10px;
+        padding: 15px 16px;
+        gap: 8px;
         text-align: center;
         background: rgba(15, 23, 42, 1);
     }
 
     /* Component adjustments */
     h2 {
-        font-size: 22px;
+        font-size: 20px;
+        margin-bottom: 15px;
     }
 
     .admin-grid {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .admin-card {
+        padding: 18px;
     }
 
     .input-group {
@@ -706,8 +828,8 @@ select option {
     }
 
     .process-header {
-        font-size: 16px;
-        padding: 15px;
+        font-size: 15px;
+        padding: 14px;
     }
 
     .sp-row-top {
@@ -721,6 +843,13 @@ select option {
         justify-content: flex-start;
     }
 
+    /* Timetable header */
+    .timetable-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
     .tt-item {
         flex-direction: column;
         align-items: flex-start;
@@ -729,34 +858,65 @@ select option {
 
     .tt-label {
         width: 100%;
+        font-size: 13px;
+    }
+
+    /* Report card */
+    .report-card {
+        padding: 30px 20px;
+    }
+
+    .button-row {
+        flex-direction: column !important;
     }
 
     /* Modals */
     .login-box {
-        width: 90%;
-        padding: 25px;
+        width: 92%;
+        max-width: 400px;
+        padding: 25px 20px;
     }
 
-    /* Sidebar overlay backdrop when open */
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
+    .login-box h2 {
+        font-size: 20px;
     }
 
-    .sidebar-overlay.active {
-        display: block;
+    /* Quick add task card */
+    #quickAddTaskCard {
+        padding: 18px !important;
+    }
+
+    #quickAddTaskCard h3 {
+        font-size: 14px !important;
+    }
+
+    /* Subprocess details */
+    .sp-name {
+        font-size: 13px;
+        word-break: break-word;
+    }
+
+    .time-details-container {
+        padding: 10px;
     }
 }
 
+/* Small phone breakpoint (iPhone SE etc.) */
 @media screen and (max-width: 480px) {
     .timers-container .total-time {
-        display: none; /* Hide total time on very small screens to fit task time & clock */
+        display: none;
     }
     
-    .logo {
-        display: none; /* Only Show Icon if you had one, for now hide logo words to fit items */
+    .topbar .logo {
+        font-size: 14px;
+    }
+
+    .timer-box .time {
+        font-size: 14px;
+    }
+
+    .content-area {
+        padding: 15px 12px;
+        padding-bottom: 100px;
     }
 }
