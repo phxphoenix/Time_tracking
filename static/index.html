@@ -60,48 +60,46 @@
             <!-- Tasks View -->
             <div id="view-tasks" class="view-section active">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2>Transact Tasks</h2>
+                    <h2>Lista Zadań (Work Tickets)</h2>
                     <button class="btn primary" onclick="document.getElementById('quickAddTaskCard').classList.toggle('hidden')">
-                        <i class="fa-solid fa-bolt"></i> Quick Create
+                        <i class="fa-solid fa-bolt"></i> Dodaj Ticket
                     </button>
                 </div>
                 
-                <p style="color:var(--text-secondary); margin-bottom: 20px;">Widzisz wyłącznie Taski, do których jesteś przypisany jako rejestrujący czas.</p>
+                <p style="color:var(--text-secondary); margin-bottom: 20px;">Poniżej znajdują się Twoje aktywne zadania. Rozwiń zadanie, aby wybrać kategorię pracy (Proces > Subproces) i alokować czas.</p>
                 
                 <!-- Quick Add Task Dashboard -->
                 <div id="quickAddTaskCard" class="admin-card glass hidden" style="margin-bottom: 30px; border-left: 4px solid var(--accent-blue);">
-                    <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-plus-circle"></i> Szybkie Tworzenie Zadania (Nowe TaskID)</h3>
+                    <h3 style="margin-bottom: 15px; font-size: 16px;"><i class="fa-solid fa-plus-circle"></i> Szybkie Utworzenie Zadania (Ticket)</h3>
                     <div class="input-group" style="flex-wrap: wrap;">
-                        <select id="quickProcessSelect" style="flex: 1; min-width: 180px;">
+                        <input type="number" id="quickTaskNumericId" placeholder="TicketID" style="width: 15%; min-width: 80px;">
+                        <input type="text" id="quickTaskName" placeholder="Nazwa Twojego zadania..." style="flex: 2; min-width: 200px;">
+                        <select id="quickTaskProcessSelect" style="flex: 1; min-width: 150px;">
                             <option value="">Wybierz Proces...</option>
                         </select>
-                        <input type="text" id="quickTaskName" placeholder="Nazwa nowego zadania..." style="flex: 2; min-width: 250px;">
-                        <select id="quickUserSelect" style="flex: 1; min-width: 150px;">
-                            <option value="">Przypisz do...</option>
+                        <select id="quickUserSelect" style="flex: 1; min-width: 120px;">
+                            <option value="">Przypisz...</option>
                         </select>
                         <button id="btnQuickAddConfirm" class="btn success"><i class="fa-solid fa-check"></i> Utwórz</button>
                     </div>
                 </div>
 
                 <div id="processesList" class="processes-list">
-                    <!-- Populated by JS -->
+                    <!-- Populated by JS with hierarchical tree -->
                 </div>
             </div>
 
             <!-- Timetable View -->
             <div id="view-timetable" class="view-section">
-                <div class="timetable-header">
-                    <h2>Mój Osobisty Timetable</h2>
-                    <div class="date-navigator">
-                        <button id="btnPrevDay" class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
-                        <span id="currentDateDisplay" class="date-display">Dzisiaj</span>
-                        <button id="btnNextDay" class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
+                <div class="view-header">
+                    <h2>Mój Grafik</h2>
+                    <div class="date-nav">
+                        <button id="prevDate" class="btn secondary"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="currentDateDisplay">Dzisiaj</span>
+                        <button id="nextDate" class="btn secondary"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
-                <p class="subtitle">Podsumowanie Twojego osobistego czasu na taskach dla wybranego dnia</p>
-                <div id="calendarContainer" class="calendar-container">
-                    <!-- Populated by JS -->
-                </div>
+                <div id="timelineList" class="timeline"></div>
             </div>
 
             <!-- Reporting View -->
@@ -124,25 +122,41 @@
                 
                 <div class="admin-grid">
                     <div class="admin-card">
-                        <h3>Dodaj Process</h3>
+                        <h3>1. Kategorie: Procesy</h3>
+                        <p style="font-size: 11px; margin-bottom:10px; color:var(--text-secondary);">Główne obszary prac (np. Produkcja, Sales, Marketing)</p>
                         <div class="input-group">
-                            <input type="text" id="newProcessName" placeholder="Nazwa nowego procesu...">
+                            <input type="text" id="newProcessName" placeholder="Nazwa procesu...">
                             <button id="btnAddProcess" class="btn primary">Dodaj</button>
                         </div>
                     </div>
+
                     <div class="admin-card">
-                        <h3>Utwórz Pusty Task</h3>
+                        <h3>2. Kategorie: Subprocesy</h3>
+                        <p style="font-size: 11px; margin-bottom:10px; color:var(--text-secondary);">Elementy procesu (np. Spotkanie, Analiza, Kodowanie)</p>
                         <div class="input-group">
                             <select id="parentProcessSelect">
-                                <option value="">Wybierz docelowy Process...</option>
+                                <option value="">Wybierz Proces...</option>
                             </select>
-                            <input type="text" id="newSubprocessName" placeholder="Nazwa taska...">
+                            <input type="text" id="newSubprocessName" placeholder="Nazwa subprocesu...">
                             <button id="btnAddSubprocess" class="btn primary">Dodaj</button>
                         </div>
-                        <p style="font-size: 11px; margin-top:5px; color:var(--text-secondary);">Autor automatycznie zostaje dołączony do stworzonego Taska.</p>
                     </div>
+
                     <div class="admin-card">
-                        <h3>Users (Autoryzacja z Hash/Hasłem)</h3>
+                        <h3>3. Zarządzaj Zadaniami (Tickets)</h3>
+                        <p style="font-size: 11px; margin-bottom:10px; color:var(--text-secondary);">Zdefiniuj konkretny Ticket i przypisz użytkownika.</p>
+                        <div class="input-group" style="flex-wrap: wrap;">
+                            <input type="number" id="newTaskNumericId" placeholder="ID" style="width: 20%;">
+                            <input type="text" id="newTaskName" placeholder="Nazwa..." style="width: 75%;">
+                            <select id="newTaskProcessSelect" style="width: 70%;">
+                                <option value="">Wybierz Proces...</option>
+                            </select>
+                            <button id="btnCreateRealTask" class="btn success" style="width: 25%;"><i class="fa-solid fa-plus"></i> Utwórz</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-card">
+                        <h3>Users (Użytkownicy)</h3>
                         <div class="input-group">
                             <input type="text" id="newUsername" placeholder="User Name" style="width: 30%;">
                             <input type="text" id="newUserEmail" placeholder="Email" style="width: 30%;">
@@ -153,7 +167,7 @@
                     </div>
                 </div>
                 
-                <h3 style="margin-top: 40px; margin-bottom: 20px;">Edycja Zapisanych Strukturalnie Danych</h3>
+                <h3 style="margin-top: 40px; margin-bottom: 20px;">Edycja Danych (Procesy / Subprocesy / Taski)</h3>
                 <div id="adminEditList" class="processes-list">
                     <!-- Populated by JS -->
                 </div>

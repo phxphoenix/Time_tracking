@@ -5,8 +5,13 @@ timetracker.db
 # Pliki środowiska Pythona i cache
 __pycache__/
 *.pyc
+.pytest_cache/
 venv/
 .env
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
 
 # Raporty - wygenerowane pliki aplikacji
 AllChargesReport*.txt
