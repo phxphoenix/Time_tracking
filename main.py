@@ -689,10 +689,17 @@ def generate_csv(token: str, db: Session = Depends(get_db)):
 
 # ==================== STATIC & SPA SERVING ====================
 
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "version": "2.0.0"}
 
-FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
 if os.path.isdir(os.path.join(FRONTEND_DIST, "assets")):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
 
@@ -702,7 +709,7 @@ def read_index():
     dist_index = os.path.join(FRONTEND_DIST, "index.html")
     if os.path.isfile(dist_index):
         return FileResponse(dist_index)
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 if __name__ == "__main__":

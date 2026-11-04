@@ -155,11 +155,18 @@ python -m pytest -v
 
 ---
 
-## Wdrożenie produkcyjne (Render.com)
+## Wdrożenie produkcyjne (Vercel + Neon / Supabase PostgreSQL)
 
-Aplikacja jest w pełni skonfigurowana pod wdrożenie chmurowe (np. **Render Web Service**):
+Aplikacja jest w pełni skonfigurowana pod błyskawiczny hosting Serverless na **Vercel** (plik `vercel.json`):
+
+1. Wejdź na **[vercel.com/new](https://vercel.com/new)** i zaloguj się przez swoje konto **GitHub**.
+2. Wybierz repozytorium **`phxphoenix/Time_tracking`** i kliknij **Import**.
+3. **Baza danych (Trwały PostgreSQL za darmo)**:
+   * W panelu projektu na Vercel przejdź do zakładki **Storage** $\rightarrow$ **Create Database** $\rightarrow$ wybierz darmowy **Neon Postgres** (lub **Supabase**). Vercel automatycznie doda zmienną `DATABASE_URL` (lub `POSTGRES_URL`) do Twojego projektu.
+   * Alternatywnie możesz w zakładce **Settings $\rightarrow$ Environment Variables** ręcznie wkleić zmienną `DATABASE_URL` z zewnętrznej bazy Neon.tech / Supabase oraz własny `SECRET_KEY`.
+4. Kliknij **Deploy** – aplikacja będzie dostępna pod adresem `https://time-tracking-<twoja-nazwa>.vercel.app`.
+
+### Alternatywne wdrożenie (Render.com)
 * **Build Command**: `pip install -r requirements.txt`
 * **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-* **Zmienne środowiskowe (Environment Variables)**:
-  * `DATABASE_URL` – adres połączenia do bazy PostgreSQL (automatycznie konwertuje prefiks `postgres://` na `postgresql://`). W przypadku braku zmiennej używana jest lokalna baza SQLite.
-  * `SECRET_KEY` – klucz prywatny do podpisywania tokenów JWT.
+* **Zmienne środowiskowe**: `DATABASE_URL`, `SECRET_KEY`.
