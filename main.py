@@ -54,46 +54,70 @@ def init_db():
         except Exception:
             db.rollback()
 
-    # 2. Tworzenie domyślnego użytkownika phx
-    phx_user = db.query(models.User).filter(models.User.username == "phx").first()
-    if not phx_user:
-        hashed = auth.get_password_hash("0zKvUd8W@!P#MPpTWgA%")
-        phx_user = models.User(
-            username="phx",
-            email="phx.poczta@gmail.com",
-            hashed_password=hashed,
+    # 2. Tworzenie domyślnego użytkownika phx (odporne na wyścigi równoległych instancji Serverless)
+    phx_user = (
+        db.query(models.User)
+        .filter(
+            (models.User.username == "phx")
+            | (models.User.email == "phx.poczta@gmail.com")
         )
-        db.add(phx_user)
-        db.commit()
-        db.refresh(phx_user)
+        .first()
+    )
+    if not phx_user:
+        try:
+            hashed = auth.get_password_hash("0zKvUd8W@!P#MPpTWgA%")
+            phx_user = models.User(
+                username="phx",
+                email="phx.poczta@gmail.com",
+                hashed_password=hashed,
+            )
+            db.add(phx_user)
+            db.commit()
+            db.refresh(phx_user)
+        except Exception:
+            db.rollback()
+            phx_user = (
+                db.query(models.User)
+                .filter(
+                    (models.User.username == "phx")
+                    | (models.User.email == "phx.poczta@gmail.com")
+                )
+                .first()
+            )
 
     # 3. Migracja osieroconych wpisów czasu do phx
-    try:
-        db.execute(text(f"UPDATE time_entries SET user_id = {phx_user.id} WHERE user_id IS NULL"))
-        db.commit()
-    except Exception:
-        db.rollback()
+    if phx_user:
+        try:
+            db.execute(text(f"UPDATE time_entries SET user_id = {phx_user.id} WHERE user_id IS NULL"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
     # 4. Domyślne Kategorie (Procesy i Subprocesy)
     p1 = db.query(models.Process).filter(models.Process.name == "Pulpit Wewnętrzny").first()
     if not p1:
-        p1 = models.Process(name="Pulpit Wewnętrzny")
-        db.add(p1)
-        db.commit()
-        db.refresh(p1)
+        try:
+            p1 = models.Process(name="Pulpit Wewnętrzny")
+            db.add(p1)
+            db.commit()
+            db.refresh(p1)
 
-        categories = ["Spotkanie", "Analiza", "Development", "Testowanie", "Dokumentacja"]
-        for cat in categories:
-            db_sp = models.Subprocess(name=cat, process_id=p1.id)
-            db.add(db_sp)
-        db.commit()
+            categories = ["Spotkanie", "Analiza", "Development", "Testowanie", "Dokumentacja"]
+            for cat in categories:
+                db_sp = models.Subprocess(name=cat, process_id=p1.id)
+                db.add(db_sp)
+            db.commit()
+        except Exception:
+            db.rollback()
+            p1 = db.query(models.Process).filter(models.Process.name == "Pulpit Wewnętrzny").first()
 
     # 5. Migracja Tasków do domyślnego procesu jeśli nie mają przypisania
-    try:
-        db.execute(text(f"UPDATE tasks SET process_id = {p1.id} WHERE process_id IS NULL"))
-        db.commit()
-    except Exception:
-        db.rollback()
+    if p1:
+        try:
+            db.execute(text(f"UPDATE tasks SET process_id = {p1.id} WHERE process_id IS NULL"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
     db.close()
 
