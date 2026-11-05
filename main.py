@@ -16,9 +16,8 @@ import models, schemas, auth, database
 from auth import get_db
 from database import engine, SessionLocal
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="TimeTracker Pro API", version="2.0.0")
+DB_INIT_ERROR: Optional[str] = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,7 +98,10 @@ def init_db():
     db.close()
 
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    DB_INIT_ERROR = str(e)
 
 
 # ==================== AUTHENTICATION ====================
@@ -692,7 +694,12 @@ def generate_csv(token: str, db: Session = Depends(get_db)):
 @app.get("/api/health")
 def health_check():
     db_type = "sqlite" if database.is_sqlite else "postgresql"
-    return {"status": "ok", "version": "2.0.0", "database": db_type}
+    return {
+        "status": "ok" if not DB_INIT_ERROR else "degraded",
+        "version": "2.0.0",
+        "database": db_type,
+        "db_init_error": DB_INIT_ERROR,
+    }
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
