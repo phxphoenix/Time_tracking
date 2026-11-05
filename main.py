@@ -695,9 +695,12 @@ def generate_csv(token: str, db: Session = Depends(get_db)):
 def health_check():
     db_type = "sqlite" if database.is_sqlite else "postgresql"
     return {
-        "status": "ok" if not DB_INIT_ERROR else "degraded",
+        "status": "ok" if not (DB_INIT_ERROR or database.ENGINE_ERROR) else "degraded",
         "version": "2.0.0",
         "database": db_type,
+        "driver": database.ACTIVE_DRIVER,
+        "env_key": database.matched_env_key,
+        "engine_error": database.ENGINE_ERROR,
         "db_init_error": DB_INIT_ERROR,
     }
 
