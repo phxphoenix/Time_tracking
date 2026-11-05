@@ -12,7 +12,7 @@ import datetime
 import os
 import csv
 
-import models, schemas, auth
+import models, schemas, auth, database
 from auth import get_db
 from database import engine, SessionLocal
 
@@ -691,7 +691,8 @@ def generate_csv(token: str, db: Session = Depends(get_db)):
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "version": "2.0.0"}
+    db_type = "sqlite" if database.is_sqlite else "postgresql"
+    return {"status": "ok", "version": "2.0.0", "database": db_type}
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
